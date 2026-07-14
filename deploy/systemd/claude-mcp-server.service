@@ -1,0 +1,20 @@
+[Unit]
+Description=KingBuilds MCP Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/claude-mcp-server
+Environment="ALLOWED_DIR=/home/builder/data"
+Environment="MCP_TRANSPORT=streamable-http"
+Environment="MCP_HOST=0.0.0.0"
+Environment="MCP_PORT=8080"
+ExecStart=/opt/claude-mcp-server/.venv/bin/python -m mcp_server.http_main
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

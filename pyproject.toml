@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-mcp-server"
+version = "0.1.0"
+description = "Production-ready Claude MCP server: sandboxed file access, web scraping, data transformation, and authenticated HTTP requests over stdio and HTTP/SSE."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "KingBuilds" }]
+
+dependencies = [
+  "mcp>=1.28.0",
+  "httpx>=0.28.0",
+  "httpx-sse>=0.4.0",
+  "beautifulsoup4>=4.12.0",
+  "pydantic>=2.10.0",
+  "pydantic-settings>=2.6.0",
+  "starlette>=0.41.0",
+  "uvicorn>=0.32.0",
+  "sse-starlette>=2.1.0",
+  "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=5.0.0",
+  "coverage>=7.6.0",
+  "respx>=0.21.0",
+  "ruff>=0.7.0",
+]
+
+[project.scripts]
+mcp-server-stdio = "mcp_server.stdio_main:main"
+mcp-server-http = "mcp_server.http_main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--cov=mcp_server --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["mcp_server"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

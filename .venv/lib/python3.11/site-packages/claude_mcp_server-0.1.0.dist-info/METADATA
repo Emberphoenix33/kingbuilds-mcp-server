@@ -1,0 +1,109 @@
+Metadata-Version: 2.4
+Name: claude-mcp-server
+Version: 0.1.0
+Summary: Production-ready Claude MCP server: sandboxed file access, web scraping, data transformation, and authenticated HTTP requests over stdio and HTTP/SSE.
+Author: KingBuilds
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: mcp>=1.28.0
+Requires-Dist: httpx>=0.28.0
+Requires-Dist: httpx-sse>=0.4.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: pydantic>=2.10.0
+Requires-Dist: pydantic-settings>=2.6.0
+Requires-Dist: starlette>=0.41.0
+Requires-Dist: uvicorn>=0.32.0
+Requires-Dist: sse-starlette>=2.1.0
+Requires-Dist: python-dotenv>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.24.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0.0; extra == "dev"
+Requires-Dist: coverage>=7.6.0; extra == "dev"
+Requires-Dist: respx>=0.21.0; extra == "dev"
+Requires-Dist: ruff>=0.7.0; extra == "dev"
+
+# KingBuilds MCP Server
+
+Production-ready reference MCP server with 4 tools:
+- **file_ops** — Sandboxed file read/write/list within allowed directory
+- **web_scraper** — Clean HTML extraction (title, text, links, CSS selectors)
+- **data_transform** — JSON↔CSV conversion + aggregation (sum/avg/count/min/max/filter/sort)
+- **http_request** — Authenticated HTTP requests with SSRF protection
+
+## Quickstart
+
+```bash
+# Install
+pip install -e .
+
+# Run stdio transport (for Claude Desktop)
+mcp-server-stdio
+
+# Run HTTP/SSE server
+mcp-server-http
+```
+
+## Configuration
+
+Environment variables:
+- `ALLOWED_DIR` — Sandbox directory for file operations (default: `./data`)
+- `MCP_TRANSPORT` — `stdio` or `streamable-http` (default: `streamable-http`)
+- `MCP_HOST` — Host to bind (default: `0.0.0.0`)
+- `MCP_PORT` — Port for HTTP transport (default: `8080`)
+- `MAX_FILE_BYTES` — Max file size for read/write (default: `1048576`)
+- `REQUEST_TIMEOUT` — HTTP request timeout seconds (default: `30`)
+
+## Tools
+
+### file_ops
+- `read_file(path: str)` — Read UTF-8 text file
+- `write_file(path: str, content: str, overwrite: bool)` — Write file
+- `list_directory(path: str)` — List directory contents
+
+### web_scraper
+- `fetch_page(url: str, selector: str = None)` — Fetch and extract HTML content
+
+### data_transform
+- `transform_data(data: list, operation: str, **kwargs)` — Transform data
+
+### http_request
+- `http_request(method: str, url: str, headers: dict, body: dict, auth: dict)` — Make HTTP requests
+
+## Claude Desktop Config
+
+```json
+{
+  "mcpServers": {
+    "kingbuilds-mcp": {
+      "command": "mcp-server-stdio",
+      "env": {
+        "ALLOWED_DIR": "/home/user/data"
+      }
+    }
+  }
+}
+```
+
+## Deployment
+
+```bash
+# Docker
+docker-compose up -d
+
+# Systemd
+sudo cp deploy/systemd/claude-mcp-server.service /etc/systemd/system/
+sudo systemctl enable --now claude-mcp-server
+```
+
+## Security
+
+- File operations sandboxed to `ALLOWED_DIR` with path traversal protection
+- SSRF protection: private/loopback/link-local IPs blocked by default
+- Request size/timeouts enforced
+- Input validation on all tool inputs
+
+## License
+
+MIT

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "kingbuilds-mcp": {
+      "command": "mcp-server-stdio",
+      "env": {
+        "ALLOWED_DIR": "/home/user/data"
+      }
+    }
+  }
+}

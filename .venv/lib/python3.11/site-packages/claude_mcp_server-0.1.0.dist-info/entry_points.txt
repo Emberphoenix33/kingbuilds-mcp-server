@@ -1,0 +1,3 @@
+[console_scripts]
+mcp-server-http = mcp_server.http_main:main
+mcp-server-stdio = mcp_server.stdio_main:main
