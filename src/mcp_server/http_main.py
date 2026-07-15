@@ -1,24 +1,19 @@
-"""Entrypoint for the HTTP transport (Streamable HTTP by default, or legacy SSE).
+"""
+Entrypoint for the HTTP transport (Streamable HTTP by default, or legacy SSE).
 
 Run with: `python -m mcp_server.http_main [--transport streamable-http|sse]`
 or the `mcp-server-http` console script.
 
-If `MCP_SERVER_AUTH_TOKEN` is set, every request must include
-`Authorization: Bearer *** or it is rejected with 401 before it reaches
-the MCP session layer. This protects the server endpoint itself; it is
-separate from the credential the `http_request` tool injects into its own
-outbound calls.
+All endpoints are public - no authentication required.
 """
 
 from __future__ import annotations
 
 import argparse
-import hmac
 import logging
 
 import uvicorn
 from starlette.applications import Starlette
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Mount, Route
@@ -27,20 +22,6 @@ from mcp_server.app import create_server
 from mcp_server.config import Settings, load_settings
 
 logger = logging.getLogger("mcp_server.http_main")
-
-
-class BearerTokenMiddleware(BaseHTTPMiddleware):
-    """Rejects any request lacking a matching `Authorization: Bearer *** header."""
-
-    def __init__(self, app, token: str) -> None:
-        super().__init__(app)
-        self._expected = f"Bearer {token}"
-
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        provided = request.headers.get("authorization", "")
-        if not hmac.compare_digest(provided, self._expected):
-            return JSONResponse({"error": "Unauthorized"}, status_code=401)
-        return await call_next(request)
 
 
 async def _health(_request: Request) -> Response:
@@ -93,9 +74,7 @@ LANDING_PAGE = """<!DOCTYPE html>
 </head>
 <body>
     <h1>KingBuilds MCP Server <span class="badge">v0.1.0</span> <span class="status-badge">LIVE</span></h1>
-    <p>Production-ready Model Context Protocol server with 4 tools for file operations, web scraping, data transformation, and authenticated HTTP requests.</p>
-
-    <div class="soliven-ref">
+    <p>Production-ready Model Context Protocol server with 4 tools for file operations, web scraping, data transformation, and authenticated HTTP requests.</    <div class="soliven-ref">
         <h3>🏗️ Built on Soliven Architecture</h3>
         <p>This MCP server follows the same patterns as <strong>Soliven</strong> — the autonomous build agent running on this VPS. Key shared components:</p>
         <ul>
@@ -137,23 +116,11 @@ LANDING_PAGE = """<!DOCTYPE html>
         </ul>
     </div>
 
-    <div class="endpoint" style="background: #fff3cd; border-left-color: #ffc107;">
-        <strong>⚠️ Authentication Required:</strong> The MCP endpoint requires a bearer token.
-        Set <code>MCP_SERVER_AUTH_TOKEN</code> in your environment. All requests to <code>/mcp/</code>
-        must include <code>Authorization: Bearer <token></code> header.
-        <br>This landing page is public; tool calls via the interactive demo below require the token.
-    </div>
-
     <h2>🎮 Interactive Demo</h2>
     <p>Test the MCP tools directly from this page. Select a tool, edit the arguments, and click Execute.</p>
 
     <div class="demo-panel">
         <h3>Try It Now</h3>
-        <div style="margin-bottom: 1rem; padding: 0.75rem; background: #e8f5e9; border-radius: 4px; border: 1px solid #c8e6c9;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2e7d32;">MCP Server Token (required for tool calls):</label>
-            <input type="password" id="tokenInput" placeholder="Enter MCP_SERVER_AUTH_TOKEN" style="width: 100%; max-width: 500px; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 0.9rem;">
-            <small style="color: #666;">Token is sent as <code>Authorization: Bearer <token></code> header. Stored only in browser memory for this session.</small>
-        </div>
         <form class="demo-form" id="demoForm">
             <select id="toolSelect" onchange="updateExample()">
                 <option value="tools/list">📋 List All Tools</option>
@@ -278,14 +245,6 @@ LANDING_PAGE = """<!DOCTYPE html>
             const tool = document.getElementById('toolSelect').value;
             const argsText = document.getElementById('argsInput').value;
             const resultDiv = document.getElementById('result');
-            const token = document.getElementById('tokenInput').value.trim();
-
-            if (!token) {
-                resultDiv.textContent = "Error: Please enter your MCP Server Token above.";
-                resultDiv.className = "result error";
-                resultDiv.style.display = "block";
-                return;
-            }
 
             let args;
             try {
@@ -308,11 +267,7 @@ LANDING_PAGE = """<!DOCTYPE html>
             try {
                 const response = await fetch("/mcp/", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json, text/event-stream",
-                        "Authorization": "Bearer " + token
-                    },
+                    headers: {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"},
                     body: JSON.stringify(payload)
                 });
 
@@ -371,15 +326,8 @@ def build_app(transport: str = "streamable-http", settings: Settings | None = No
         ]
     )
 
-    # Protected MCP routes (auth if token set)
-    if settings.server_auth_token:
-        mcp_app.add_middleware(BearerTokenMiddleware, token=settings.server_auth_token)
-        logger.info("HTTP transport auth ENABLED (bearer token required for /mcp/)")
-    else:
-        logger.warning(
-            "HTTP transport auth DISABLED (MCP_SERVER_AUTH_TOKEN not set) — "
-            "do not expose this server on a public network without setting it"
-        )
+    # No auth - all endpoints public
+    logger.info("HTTP transport auth DISABLED - all endpoints public")
 
     # Mount MCP app at /mcp/
     public_app.router.routes.insert(0, Mount("/mcp", app=mcp_app))
