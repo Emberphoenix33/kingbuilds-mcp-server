@@ -7,7 +7,7 @@ name = "claude-mcp-server"
 version = "0.1.0"
 description = "Production-ready Claude MCP server: sandboxed file access, web scraping, data transformation, and authenticated HTTP requests over stdio and HTTP/SSE."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "KingBuilds" }]
 
@@ -58,7 +58,7 @@ exclude_lines = [
 
 [tool.ruff]
 line-length = 110
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
