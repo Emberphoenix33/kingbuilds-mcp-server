@@ -357,25 +357,34 @@ def build_app(transport: str = "streamable-http", settings: Settings | None = No
     mcp = create_server(settings)
 
     if transport == "sse":
-        starlette_app = mcp.sse_app()
+        mcp_app = mcp.sse_app()
     elif transport == "streamable-http":
-        starlette_app = mcp.streamable_http_app()
+        mcp_app = mcp.streamable_http_app()
     else:
         raise ValueError(f"Unsupported HTTP transport: {transport!r} (expected 'streamable-http' or 'sse')")
 
-    starlette_app.router.routes.insert(0, Route("/health", _health, methods=["GET"]))
-    starlette_app.router.routes.insert(0, Route("/", landing_page, methods=["GET"]))
+    # Public routes (no auth)
+    public_app = Starlette(
+        routes=[
+            Route("/", landing_page, methods=["GET"]),
+            Route("/health", _health, methods=["GET"]),
+        ]
+    )
 
+    # Protected MCP routes (auth if token set)
     if settings.server_auth_token:
-        starlette_app.add_middleware(BearerTokenMiddleware, token=settings.server_auth_token)
-        logger.info("HTTP transport auth ENABLED (bearer token required)")
+        mcp_app.add_middleware(BearerTokenMiddleware, token=settings.server_auth_token)
+        logger.info("HTTP transport auth ENABLED (bearer token required for /mcp/)")
     else:
         logger.warning(
             "HTTP transport auth DISABLED (MCP_SERVER_AUTH_TOKEN not set) — "
             "do not expose this server on a public network without setting it"
         )
 
-    return starlette_app
+    # Mount MCP app at /mcp/
+    public_app.router.routes.insert(0, Mount("/mcp", app=mcp_app))
+
+    return public_app
 
 
 def main() -> None:
