@@ -74,7 +74,9 @@ LANDING_PAGE = """<!DOCTYPE html>
 </head>
 <body>
     <h1>KingBuilds MCP Server <span class="badge">v0.1.0</span> <span class="status-badge">LIVE</span></h1>
-    <p>Production-ready Model Context Protocol server with 4 tools for file operations, web scraping, data transformation, and authenticated HTTP requests.</    <div class="soliven-ref">
+    <p>Production-ready Model Context Protocol server with 4 tools for file operations, web scraping, data transformation, and authenticated HTTP requests.</</p>
+
+    <div class="soliven-ref">
         <h3>🏗️ Built on Soliven Architecture</h3>
         <p>This MCP server follows the same patterns as <strong>Soliven</strong> — the autonomous build agent running on this VPS. Key shared components:</p>
         <ul>
@@ -85,7 +87,7 @@ LANDING_PAGE = """<!DOCTYPE html>
             <li><strong>Dual transport</strong> — stdio (Claude Desktop) + HTTP/SSE (web clients) from same codebase</li>
             <li><strong>Testable by design</strong> — Security primitives isolated for unit testing</li>
         </ul>
-        <p>See <code>src/mcp_server/security.py</code>, <code>src/mcp_server/net.py</code>, and <code>src/mcp_server/config.py</code> for the shared primitives.</p>
+        <p>See <code>src/mcp_server/security.py</code>, <code>src/mcp_server/net.py</code>, and <code>src/mcp_server/config.py</code> for the shared primitives.</</p>
     </div>
 
     <div class="grid">
@@ -116,11 +118,23 @@ LANDING_PAGE = """<!DOCTYPE html>
         </ul>
     </div>
 
+    <div class="endpoint" style="background: #fff3cd; border-left-color: #ffc107;">
+        <strong>⚠️ Authentication Required:</strong> The MCP endpoint requires a bearer token.
+        Set <code>MCP_SERVER_AUTH_TOKEN</code> in your environment. All requests to <code>/mcp/</code>
+        must include <code>Authorization: Bearer <token></code> header.
+        <br>This landing page is public; tool calls via the interactive demo below require the token.
+    </div>
+
     <h2>🎮 Interactive Demo</h2>
-    <p>Test the MCP tools directly from this page. Select a tool, edit the arguments, and click Execute.</p>
+    <p>Test the MCP tools directly from this page. Select a tool, edit the arguments, and click Execute.</</p>
 
     <div class="demo-panel">
         <h3>Try It Now</h3>
+        <div style="margin-bottom: 1rem; padding: 0.75rem; background: #e8f5e9; border-radius: 4px; border: 1px solid #c8e6c9;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #2e7d32;">MCP Server Token (required for tool calls):</label>
+            <input type="password" id="tokenInput" placeholder="Enter MCP_SERVER_AUTH_TOKEN" style="width: 100%; max-width: 500px; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 0.9rem;">
+            <small style="color: #666;">Token is sent as <code>Authorization: Bearer <token></code> header. Stored only in browser memory for this session.</small>
+        </div>
         <form class="demo-form" id="demoForm">
             <select id="toolSelect" onchange="updateExample()">
                 <option value="tools/list">📋 List All Tools</option>
@@ -245,6 +259,14 @@ LANDING_PAGE = """<!DOCTYPE html>
             const tool = document.getElementById('toolSelect').value;
             const argsText = document.getElementById('argsInput').value;
             const resultDiv = document.getElementById('result');
+            const token = document.getElementById('tokenInput').value.trim();
+
+            if (!token) {
+                resultDiv.textContent = "Error: Please enter your MCP Server Token above.";
+                resultDiv.className = "result error";
+                resultDiv.style.display = "block";
+                return;
+            }
 
             let args;
             try {
@@ -267,7 +289,11 @@ LANDING_PAGE = """<!DOCTYPE html>
             try {
                 const response = await fetch("/mcp/", {
                     method: "POST",
-                    headers: {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"},
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json, text/event-stream",
+                        "Authorization": "Bearer " + token
+                    },
                     body: JSON.stringify(payload)
                 });
 
@@ -275,7 +301,6 @@ LANDING_PAGE = """<!DOCTYPE html>
                 let data;
 
                 if (contentType.includes("text/event-stream")) {
-                    // SSE stream - read first event
                     const text = await response.text();
                     const lines = text.split("\n");
                     for (const line of lines) {
@@ -297,11 +322,10 @@ LANDING_PAGE = """<!DOCTYPE html>
         }
 
         // Initialize
-        updateExample();
+        document.addEventListener('DOMContentLoaded', updateExample);
     </script>
 </body>
 </html>"""
-
 
 async def landing_page(request):
     return HTMLResponse(LANDING_PAGE)
@@ -329,7 +353,7 @@ def build_app(transport: str = "streamable-http", settings: Settings | None = No
     # No auth - all endpoints public
     logger.info("HTTP transport auth DISABLED - all endpoints public")
 
-    # Mount MCP app at /mcp (no trailing slash)
+    # Mount MCP app at /mcp (no trailing slash for proper routing)
     public_app.router.routes.insert(0, Mount("/mcp", app=mcp_app))
 
     return public_app
