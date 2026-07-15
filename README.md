@@ -6,6 +6,18 @@ Production-ready reference MCP server with 4 tools:
 - **data_transform** — JSON↔CSV conversion + aggregation (sum/avg/count/min/max/filter/sort)
 - **http_request** — Authenticated HTTP requests with SSRF protection
 
+## Architecture
+
+This server is built on the **Soliven architecture** — the autonomous build agent running on this VPS. Shared patterns:
+
+| Component | Purpose | Soliven Reference |
+|-----------|---------|-------------------|
+| `security.py` | Path traversal protection, SSRF-safe URL validation | Soliven sandbox |
+| `net.py` | Safe HTTP client with redirect validation | Soliven outbound requests |
+| `config.py` | Pydantic Settings with `MCP_` prefix, validated at startup | Soliven config |
+| Dual transport | stdio (Claude Desktop) + HTTP/SSE (web) | Soliven multi-interface |
+| Structured logging | Consistent format across all tools | Soliven observability |
+
 ## Quickstart
 
 ```bash
@@ -36,14 +48,62 @@ Environment variables:
 - `write_file(path: str, content: str, overwrite: bool)` — Write file
 - `list_directory(path: str)` — List directory contents
 
+**Example prompts:**
+- "Read the README.md file and summarize it"
+- "Create a file called todo.txt with my task list"
+- "List all files in the data directory"
+
 ### web_scraper
 - `fetch_page(url: str, selector: str = None)` — Fetch and extract HTML content
+
+**Example prompts:**
+- "Fetch the latest headlines from Hacker News"
+- "Get the title and main text from this article URL"
+- "Extract all links from this page matching `.titleline a`"
 
 ### data_transform
 - `transform_data(data: list, operation: str, **kwargs)` — Transform data
 
+**Example prompts:**
+- "Convert this JSON data to CSV"
+- "Calculate the average score from this data"
+- "Sum these numbers: [10, 20, 30, 40, 50]"
+- "Count unique values in the 'category' field"
+
 ### http_request
 - `http_request(method: str, url: str, headers: dict, body: dict, auth: dict)` — Make HTTP requests
+
+**Example prompts:**
+- "Call this API endpoint and return the JSON response"
+- "POST this data to the webhook with Bearer auth"
+
+## Example Tool Calls (MCP JSON-RPC)
+
+### file_ops
+```json
+{"name": "read_file", "arguments": {"path": "README.md"}}
+{"name": "write_file", "arguments": {"path": "notes.txt", "content": "Hello from MCP!", "overwrite": true}}
+{"name": "list_directory", "arguments": {"path": "."}}
+```
+
+### web_scraper
+```json
+{"name": "scrape_web_page", "arguments": {"url": "https://example.com"}}
+{"name": "scrape_web_page", "arguments": {"url": "https://news.ycombinator.com", "selector": ".titleline a", "max_links": 10}}
+```
+
+### data_transform
+```json
+{"name": "transform_data", "arguments": {"data": "[{\"name\": \"Alice\", \"age\": 30}, {\"name\": \"Bob\", \"age\": 25}]", "input_format": "json", "operation": "convert", "output_format": "csv"}}
+{"name": "transform_data", "arguments": {"data": "[10, 20, 30, 40, 50]", "input_format": "json", "operation": "sum"}}
+{"name": "transform_data", "arguments": {"data": "[{\"score\": 85}, {\"score\": 92}, {\"score\": 78}]", "input_format": "json", "operation": "average", "field": "score"}}
+```
+
+### http_request
+```json
+{"name": "http_request", "arguments": {"method": "GET", "url": "https://api.github.com/users/octocat"}}
+{"name": "http_request", "arguments": {"method": "POST", "url": "https://api.example.com/data", "headers": {"Content-Type": "application/json"}, "body": {"key": "value"}, "auth": {"scheme": "bearer", "token": "your-token-here"}}}
+```
 
 ## Claude Desktop Config
 
