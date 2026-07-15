@@ -329,8 +329,8 @@ def build_app(transport: str = "streamable-http", settings: Settings | None = No
     # No auth - all endpoints public
     logger.info("HTTP transport auth DISABLED - all endpoints public")
 
-    # Mount MCP app at /mcp
-    public_app.router.routes.insert(0, Mount("/mcp", app=mcp_app))
+    # Mount MCP app at /mcp/
+    public_app.router.routes.insert(0, Mount("/mcp/", app=mcp_app))
 
     return public_app
 
